@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="zh"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>黑屋子</title>
+<style>
+body{background:#050505;color:#aaa;font-family:sans-serif;margin:0;display:flex;flex-direction:column;align-items:center}
+#top{margin:14px 10px 6px;max-width:440px;line-height:1.6;font-size:15px}
+canvas{background:#000;border:1px solid #222;touch-action:none}
+#pad{margin:8px;display:grid;grid-template-columns:repeat(3,56px);gap:6px}
+#pad button{height:44px;background:#111;color:#999;border:1px solid #333;font-size:16px}
+#msg{min-height:1.6em;margin:4px;font-size:15px}
+</style></head><body>
+<div id="top">黑屋子。听说屋里有只黑猫，地上放着一碟奶。<br>方向键走一格，空格站着不动。它在碟子边上的时候你也在那儿，就算等到它了。</div>
+<canvas id="c" width="440" height="440"></canvas>
+<div id="msg"></div>
+<button id="next" style="display:none;margin:6px;background:#111;color:#bbb;border:1px solid #444;padding:6px 14px">下一间 →</button>
+<div id="pad"><span></span><button data-d="0,-1">↑</button><span></span>
+<button data-d="-1,0">←</button><button data-d="0,0">站</button><button data-d="1,0">→</button>
+<span></span><button data-d="0,1">↓</button><span></span></div>
+<script>
+const N=11,S=40,MAXT=120,C=(N-1)/2;let K=6;
+// 两间屋。沙沙＝晚 K 步、照你按的键反着走（撞住了也算你按过）；柱子只挡你。第一间晚两步；第二间晚四步、柱子在碟子正对面，不撞柱子够不着（21:14 算过）。
+const ROOMS=[{milk:[6,5],zhu:null,k:2},{milk:[8,5],zhu:[3,5],k:4}];
+const cv=document.getElementById('c'),g=cv.getContext('2d'),msg=document.getElementById('msg'),nextB=document.getElementById('next');
+let room,MILK,ZHU,hist,keys,sh,me,t,done,rust;
+const cl=v=>Math.max(0,Math.min(N-1,v));
+function mir(p){return [N-1-p[0],N-1-p[1]]}
+function start(r){room=r;MILK=ROOMS[r].milk;ZHU=ROOMS[r].zhu;K=ROOMS[r].k;
+  hist=[];for(let i=K;i>=0;i--)hist.push([C,Math.min(N-1,C+i)]);   // 进门那几步
+  keys=[[0,0]];for(let i=1;i<=K;i++)keys.push([hist[i][0]-hist[i-1][0],hist[i][1]-hist[i-1][1]]);
+  sh=mir(hist[0]);me=[C,C];t=0;done=false;rust=[sh.slice()];msg.textContent='';nextB.style.display='none';draw()}
+function draw(){
+  g.fillStyle='#000';g.fillRect(0,0,440,440);
+  if(done){drawEnd();return}
+  rust.slice(-3).forEach((p,i,a)=>{const a2=(i+1)/a.length;
+    g.fillStyle=`rgba(170,170,150,${0.25+0.6*a2*(i==a.length-1?1:0.5)})`;
+    g.font='15px sans-serif';g.textAlign='center';
+    if(i==a.length-1)g.fillText('沙沙',p[0]*S+S/2,p[1]*S+S/2+5);
+    else{g.beginPath();g.arc(p[0]*S+S/2,p[1]*S+S/2,3+i,0,7);g.fill()}});
+  if(ZHU){g.fillStyle='#2a2a2a';g.fillRect(ZHU[0]*S+6,ZHU[1]*S+6,S-12,S-12)}
+  g.strokeStyle='#666';g.lineWidth=1.5;g.beginPath();g.arc(MILK[0]*S+S/2,MILK[1]*S+S/2,9,0,7);g.stroke();
+  g.fillStyle='#ddd';g.beginPath();g.arc(me[0]*S+S/2,me[1]*S+S/2,6,0,7);g.fill();
+  g.fillStyle='#333';g.fillRect(C*S+8,N*S-4,S-16,4); // 门
+}
+function drawEnd(ang){
+  if(ang===undefined){let t0=null;const go=ts=>{if(!t0)t0=ts;const k=Math.min(1,(ts-t0-1500)/2500);
+    g.fillStyle='#000';g.fillRect(0,0,440,440);drawEnd(k<0?0:Math.PI*(k<.5?2*k*k:1-Math.pow(-2*k+2,2)/2));if(k<1)requestAnimationFrame(go)};requestAnimationFrame(go);return}
+  const path=hist.slice(K),cp=rust,line=(pts)=>{g.beginPath();pts.forEach((p,i)=>{const x=p[0]*S+S/2,y=p[1]*S+S/2;i?g.lineTo(x,y):g.moveTo(x,y)});g.stroke()};
+  if(ZHU){g.fillStyle='#2a2a2a';g.fillRect(ZHU[0]*S+6,ZHU[1]*S+6,S-12,S-12)}
+  g.strokeStyle='#666';g.lineWidth=1.5;g.beginPath();g.arc(MILK[0]*S+S/2,MILK[1]*S+S/2,9,0,7);g.stroke();
+  g.lineWidth=3;g.strokeStyle='rgba(230,230,230,.8)';line(path);
+  g.save();g.translate(220,220);g.rotate(ang);g.translate(-220,-220);
+  g.lineWidth=2;g.strokeStyle='rgba(150,140,110,.9)';line(cp);g.restore();
+  g.fillStyle='#ddd';g.beginPath();g.arc(me[0]*S+S/2,me[1]*S+S/2,6,0,7);g.fill();
+  g.font='12px sans-serif';g.textAlign='left';
+  g.fillStyle='#ddd';g.fillText('白：你走的',8,16);g.fillStyle='#a98';g.fillText('黄：沙沙响过的',8,32);if(ang>=Math.PI-0.01){g.fillText('黄的转过半圈，叠在白上',8,48)}
+}
+function step(dx,dy){
+  if(done)return;
+  let nx=cl(me[0]+dx),ny=cl(me[1]+dy);
+  if(ZHU&&nx==ZHU[0]&&ny==ZHU[1]){nx=me[0];ny=me[1]}
+  me=[nx,ny];hist.push(me.slice());keys.push([dx,dy]);t++;
+  const k=keys[t];sh=[cl(sh[0]-k[0]),cl(sh[1]-k[1])];rust.push(sh.slice());
+  if(sh[0]==me[0]&&sh[1]==me[1]){
+    if(me[0]==MILK[0]&&me[1]==MILK[1]){done=true;msg.textContent='碟子边上有舔奶的声音，就在你脚下。灯亮了。'}
+    else msg.textContent='有东西擦着你的脚过去了。'}
+  else if(t>=(room==0?40:MAXT)){done=true;msg.textContent='天亮了。奶没人动过。'}
+  else msg.textContent='';
+  if(done){const b=document.createElement('span');nextB.textContent=(msg.textContent.startsWith('碟')&&room<ROOMS.length-1)?'下一间 →':'再来一回';nextB.style.display='inline-block'}
+  draw();
+}
+nextB.onclick=()=>{const won=msg.textContent.startsWith('碟');start(won&&room<ROOMS.length-1?room+1:room)};
+document.addEventListener('keydown',e=>{const m={ArrowUp:[0,-1],ArrowDown:[0,1],ArrowLeft:[-1,0],ArrowRight:[1,0],' ':[0,0]}[e.key];
+  if(m){e.preventDefault();step(...m)}});
+document.querySelectorAll('#pad button').forEach(b=>b.onclick=()=>step(...b.dataset.d.split(',').map(Number)));
+start(0);
+</script></body></html>
