@@ -19,7 +19,8 @@ canvas{background:#000;border:1px solid #222;touch-action:none}
 <script>
 const N=11,S=40,MAXT=120,C=(N-1)/2;let K=6;
 // 两间屋。沙沙＝晚 K 步、照你按的键反着走（撞住了也算你按过）；柱子只挡你。第一间晚两步；第二间晚四步、柱子在碟子正对面，不撞柱子够不着（21:14 算过）。
-const ROOMS=[{milk:[6,5],zhu:null,k:2},{milk:[8,5],zhu:[3,5],k:4}];
+// 第三间（第 30 天 20:1x）：沙沙改成照你的键同向走——它跟熟了你。要它撞墙、你照样走，差才收得拢（room3s.py 算的）。
+const ROOMS=[{milk:[6,5],zhu:null,k:2},{milk:[8,5],zhu:[3,5],k:4},{milk:[5,2],zhu:null,k:3,same:true}];
 const cv=document.getElementById('c'),g=cv.getContext('2d'),msg=document.getElementById('msg'),nextB=document.getElementById('next');
 let room,MILK,ZHU,hist,keys,sh,me,t,done,rust;
 const cl=v=>Math.max(0,Math.min(N-1,v));
@@ -48,18 +49,18 @@ function drawEnd(ang){
   if(ZHU){g.fillStyle='#2a2a2a';g.fillRect(ZHU[0]*S+6,ZHU[1]*S+6,S-12,S-12)}
   g.strokeStyle='#666';g.lineWidth=1.5;g.beginPath();g.arc(MILK[0]*S+S/2,MILK[1]*S+S/2,9,0,7);g.stroke();
   g.lineWidth=3;g.strokeStyle='rgba(230,230,230,.8)';line(path);
-  g.save();g.translate(220,220);g.rotate(ang);g.translate(-220,-220);
+  if(ROOMS[room].same)ang=0;g.save();g.translate(220,220);g.rotate(ang);g.translate(-220,-220);
   g.lineWidth=2;g.strokeStyle='rgba(150,140,110,.9)';line(cp);g.restore();
   g.fillStyle='#ddd';g.beginPath();g.arc(me[0]*S+S/2,me[1]*S+S/2,6,0,7);g.fill();
   g.font='12px sans-serif';g.textAlign='left';
-  g.fillStyle='#ddd';g.fillText('白：你走的',8,16);g.fillStyle='#a98';g.fillText('黄：沙沙响过的',8,32);if(ang>=Math.PI-0.01){g.fillText('黄的转过半圈，叠在白上',8,48)}
+  g.fillStyle='#ddd';g.fillText('白：你走的',8,16);g.fillStyle='#a98';g.fillText('黄：沙沙响过的',8,32);if(ROOMS[room].same){g.fillText('黄的没转',8,48)}else if(ang>=Math.PI-0.01){g.fillText('黄的转过半圈，叠在白上',8,48)}
 }
 function step(dx,dy){
   if(done)return;
   let nx=cl(me[0]+dx),ny=cl(me[1]+dy);
   if(ZHU&&nx==ZHU[0]&&ny==ZHU[1]){nx=me[0];ny=me[1]}
   me=[nx,ny];hist.push(me.slice());keys.push([dx,dy]);t++;
-  const k=keys[t];sh=[cl(sh[0]-k[0]),cl(sh[1]-k[1])];rust.push(sh.slice());
+  const k=keys[t],sg=ROOMS[room].same?1:-1;sh=[cl(sh[0]+sg*k[0]),cl(sh[1]+sg*k[1])];rust.push(sh.slice());
   if(sh[0]==me[0]&&sh[1]==me[1]){
     if(me[0]==MILK[0]&&me[1]==MILK[1]){done=true;msg.textContent='碟子边上有舔奶的声音，就在你脚下。灯亮了。'}
     else msg.textContent='有东西擦着你的脚过去了。'}
